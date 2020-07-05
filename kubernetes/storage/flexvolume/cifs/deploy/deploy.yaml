@@ -1,0 +1,40 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: flexvolume-cifs
+  labels:
+    app: flexvolume-cifs
+
+---
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: flexvolume-cifs
+  namespace: flexvolume-cifs
+spec:
+  selector:
+    matchLabels:
+      app: flexvolume-cifs
+  template:
+    metadata:
+      name: flexvolume-cifs
+      labels:
+        app: flexvolume-cifs
+    spec:
+      containers:
+        - image: dockerpracticesig/flexvolume-cifs
+          imagePullPolicy: IfNotPresent
+          name: flexvolume-cifs
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /flexmnt
+              name: flexvolume-mount
+      volumes:
+        - name: flexvolume-mount
+          hostPath:
+            # TODO Change to the Flexvolume plugin directory of your cluster.
+            # path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec/
+            # path: /wsl/wsl-k8s-data/k8s/usr/libexec/kubernetes/kubelet-plugins/volume/exec/
+            path: ##KUBELET_PLUGINS_VOLUME_PATH##

@@ -1,0 +1,8 @@
+/*
+!README.md
+!.gitignore
+!redis
+!redis.sentinel
+!mysql
+!docker-cluster.*
+!help.sh

@@ -1,0 +1,13 @@
+resources:
+- base/prometheus-serviceMonitorKubeControllerManager.yaml
+patchesStrategicMerge:
+  - patch.yaml
+namespace: monitoring
+secretGenerator:
+  - name: kube-controller-manager-tls
+    files:
+      - ca.pem=certs/ca.pem
+      - cert.pem=certs/cert.pem
+      - key.pem=certs/key.pem
+generatorOptions:
+  disableNameSuffixHash: true

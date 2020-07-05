@@ -1,0 +1,29 @@
+{
+  "name": "dive",
+  "description": "A tool for exploring each layer in a docker image",
+  "version": "0.9.2",
+  "pre-version": "0.9.2",
+  "homepage": "https://github.com/wagoodman/dive",
+  "bug": "https://github.com/wagoodman/dive/issues",
+  "github": "wagoodman/dive",
+  "releases": "https://github.com/wagoodman/dive/releases",
+  "url": "https://github.com/wagoodman/dive/releases/download/v${VERSION}/dive_${VERSION}_${env:lwpm_os}_${env:lwpm_architecture}.$(if($_IsWindows){echo zip}else{echo tar.gz})",
+  "hash-url": {
+    "sha256": "https://github.com/wagoodman/dive/releases/download/v${VERSION}/dive_${VERSION}_checksums.txt"
+  },
+  "command": "dive",
+  "scripts": {
+    "test": "printInfo $(dive --version) install success",
+    "version": "(dive --version).split(' ')[1]",
+    "install": [
+      "_cleanup dive",
+      "if($IsWindows){_unzip $filename $unzipDesc}else{sudo tar -zxf $filename -C /usr/local/bin}",
+      "if($IsWindows){Copy-item dive\\dive.exe C:\\bin\\}",
+      "_cleanup dive"
+    ],
+    "uninstall": "_cleanup C:\\bin\\dive.exe"
+  },
+  "path": [
+    "C:\\bin"
+  ]
+}

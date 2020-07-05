@@ -1,0 +1,20 @@
+workspace:
+  base: /data/lnmp
+  path: .
+
+steps:
+  bash:
+    image: khs1994/php:7.4.7-composer-alpine
+    run:
+      - pwd
+      - bash ./lnmp-docker
+
+  # https://hub.docker.com/_/microsoft-powershell?tab=description
+  powershell:
+    image: mcr.microsoft.com/powershell:preview-alpine-3.11
+    run:
+      - pwsh ./lnmp-docker.ps1
+
+branches:
+- master
+- 19.03

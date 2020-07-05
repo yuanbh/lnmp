@@ -1,0 +1,74 @@
+on:
+  push:
+  pull_request:
+
+name: CI
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+        with:
+          fetch-depth: 2
+      - uses: docker-practice/actions-setup-docker@master
+      - uses: khs1994-docker/actions-setup-lnmp@master
+        with:
+          lnmp_services: "laravel nginx mysql php7 redis"
+          lrew_include: "laravel"
+      - name: Init LNMP
+        run: |
+          set -x
+          docker-compose --version
+          lnmp-docker compose --official
+          lnmp-docker services
+          docker-compose --version
+      - name: Install Laravel
+        env:
+          ACTIONS_COMPOSER_BIN_PATH: /home/runner/.composer/vendor/bin
+        run: |
+          set -x
+
+          echo "::add-path::$ACTIONS_COMPOSER_BIN_PATH"
+
+          lnmp-composer config -g --unset repos.packagist
+
+          cd ..
+          lnmp-laravel-by-composer new laravel 7.0
+          cp -r laravel-demo/{.dockerignore,Dockerfile,Dockerfile.buildkit} laravel/
+          cp -r laravel-demo/.test/* laravel/
+          ls -la laravel
+          ls -la laravel/resources/views
+          cd laravel
+          lnmp-composer require laravel/ui
+          lnmp-php artisan ui vue
+      - name: Test Laravel
+        run: |
+          set -x
+          cd ../laravel
+
+          lnmp-php artisan -V
+          echo "Test Laravel"
+      - name: Build Docker Image
+        env:
+          DOCKER_CLI_EXPERIMENTAL: enabled
+        run: |
+          set -x
+          cd ../laravel
+          docker buildx build --load --target=laravel -t khs1994/laravel:6.0 -f Dockerfile.buildkit .
+      - name: Up
+        run: |
+          set -x
+
+          lnmp-docker up
+          sleep 30
+          lnmp-docker nginx-cli ls /app/laravel-docker/public
+      - name: Connect
+        run: |
+          set -x
+          sleep 30
+          docker ps -a
+          curl -sSk https://laravel-docker.t.khs1994.com
+          curl -sSk https://laravel-docker.t.khs1994.com/test
+          curl -sSk https://laravel-docker.t.khs1994.com/test/view

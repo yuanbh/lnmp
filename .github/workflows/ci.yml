@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "*"
+  pull_request:
+
+jobs:
+  skip-ci:
+    runs-on: ubuntu-latest
+    if: |
+      (! (contains( github.event.head_commit.message, '[skip ci]')
+      || contains( github.event.head_commit.message, '[skip action]')
+      || contains( github.event.head_commit.message, '[skip actions]')
+      || contains( github.event.head_commit.message, '[ci skip]')
+      || contains( github.event.head_commit.message, '[actions skip]')
+      || contains( github.event.head_commit.message, '[action skip]')))
+    steps:
+      - run: echo "build continue !"
+  linux:
+    needs: skip-ci
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+      with:
+        fetch-depth: 2
+    - uses: azure/docker-login@v1
+      if: |
+        contains( github.event.head_commit.message, '[lwpm]' ) && github.event_name == 'push'
+      with:
+        # login-server: contoso.azurecr.io
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    - uses: docker-practice/actions-setup-docker@master
+      with:
+        docker_version: 19.03
+    - name: Update docker compose
+      run: |
+        set -x
+        docker-compose --version
+        ./lnmp-docker compose --official
+    - name: Stop MySQL
+      run: sudo systemctl stop mysql
+    - name: Up
+      run: |
+        set -x
+        ./lnmp-docker config > docker-compose.yml
+        docker-compose config -q
+
+        docker-compose up -d $(./lnmp-docker services)
+        sleep 20
+        docker ps -a
+        curl -fsSL 127.0.0.1
+        quite=true ./lnmp-docker down
+
+        ./lnmp-docker up
+    - name: Connect
+      run: |
+        set -x
+        sleep 20
+        curl -fsSL 127.0.0.1
+    - name: Down
+      run: ./lnmp-docker down
+    - name: pwsh
+      shell: pwsh
+      run: ./lnmp-docker.ps1
+    - name: Set ENV
+      run: |
+        echo ::add-path::`pwd`
+        echo ::add-path::`pwd`/bin
+        echo ::set-env name=LNMP_PATH::`pwd`
+    - name: lnmp-CLI
+      run: |
+        set -x
+        lnmp-php -v
+        lnmp-composer --version
+
+        lnmp-npm -v
+        lnmp-yarn -v
+    - name: build and push lwpm image
+      if: |
+        contains( github.event.head_commit.message, '[lwpm]' ) && github.event_name == 'push'
+      run: |
+        docker buildx build -t lwpm/lwpm -f windows/lwpm.Dockerfile --push windows
+    - name: build and push docker-image-sync image
+      if: |
+        contains( github.event.head_commit.message, '[lwpm]' ) && github.event_name == 'push'
+      run: |
+        docker buildx build -t khs1994/docker-image-sync -f windows/docker-image-sync.Dockerfile --push windows
+  powershell:
+    needs: skip-ci
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@master
+      with:
+        fetch-depth: 2
+    - shell: powershell
+      run: |
+        ./lnmp-docker.ps1

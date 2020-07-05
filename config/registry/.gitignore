@@ -1,0 +1,10 @@
+/*
+!.gitignore
+!config.production.yml
+!config.example.yml
+!gcr.io*
+!config.gcr.io.yml
+!ca.crt
+!kustomization.yaml
+!config.full.yml
+!nginx.htpasswd.demo

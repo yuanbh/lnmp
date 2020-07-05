@@ -1,0 +1,44 @@
+{
+  "assignees": [
+    "khs1994"
+  ],
+  "reviewers": [
+    "khs1994"
+  ],
+  "baseBranches": [
+    "19.03"
+  ],
+  "commitBody": "[skip ci]",
+  "labels": [
+    "renovateapp"
+  ],
+  "timezone": "Asia/Shanghai",
+  "extends": [
+    "config:base",
+    "docker:enableMajor"
+  ],
+  "ignorePaths": [
+    "wsl/docker-compose.yml",
+    "wsl/Dockerfile",
+    "dockerfile/php/",
+    "app/"
+  ],
+  "docker": {
+    "enabled": true
+  },
+  "docker-compose": {
+    "enabled": true,
+    "digest": {
+      "enabled": false
+    }
+  },
+  "fileMatch": [
+    "docker-compose.bump.yml"
+  ],
+  "includePaths": [
+    "scripts/docker-compose.bump.yml",
+    "kubernetes/docker-compose.bump.yml",
+    "drone/scripts/docker-compose.bump.yml",
+    "windows/lnmp-windows-pm-repo/docker-compose.bump.yml"
+  ]
+}

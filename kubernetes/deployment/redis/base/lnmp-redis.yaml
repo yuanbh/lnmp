@@ -1,0 +1,85 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: redis
+  labels:
+    app: lnmp
+    tier: redis
+spec:
+  selector:
+    app: lnmp
+    tier: redis
+  ports:
+  - port: 6379
+    # targetPort: 6379
+  clusterIP: None
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: redis
+  labels:
+    app: lnmp
+    tier: redis
+spec:
+  selector:
+    matchLabels:
+      app: lnmp
+      tier: redis
+  replicas: 1
+  minReadySeconds: 5
+  revisionHistoryLimit: 5 # 保留几个版本
+  strategy:
+    type: RollingUpdate # Recreate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: lnmp
+        tier: redis
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+      - name: lnmp-redis
+        imagePullPolicy: IfNotPresent
+        image: redis:6.0.5-alpine
+        args:
+        - redis-server
+        - /redis.conf
+        - --daemonize no
+        - --bind 0.0.0.0
+        - --appendonly yes
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              name: lnmp-tz
+              key: TZ
+        volumeMounts:
+        - name: lnmp-redis-data
+          mountPath: /data
+        - name: lnmp-redis-conf
+          mountPath: /redis.conf
+          subPath: redis.conf
+        ports:
+        - containerPort: 6379
+          name: redis
+      restartPolicy: Always
+      volumes:
+      - name: lnmp-redis-data
+        persistentVolumeClaim:
+          claimName: lnmp-redis-data
+      # 将 configMap 挂载为文件
+      - name: lnmp-redis-conf
+        configMap:
+          name: lnmp-redis-conf
+          items:
+          - key: redis.conf
+            path: redis.conf

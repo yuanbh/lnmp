@@ -1,0 +1,73 @@
+version: "3.7"
+
+x-common-label:
+  &default-common-label
+  labels:
+    - ${LNMP_DOMAIN:-com.khs1994.lnmp}=true
+    - ${LNMP_DOMAIN:-com.khs1994.lnmp}.app.env=development
+
+services:
+  # web server + daemon + agent
+  pcit:
+    &pcit
+    << : *default-common-label
+    # restart: always
+    image: pcit/pcit:unit
+    volumes:
+      - ./pcit/key:/app/pcit/framework/storage/private_key:cached
+      - ./pcit/.env.${APP_ENV:-development}:/app/pcit/.env.${APP_ENV:-development}:cached
+      - ./config/php/${LNMP_PHP_INI:-php.development.ini}:/usr/local/etc/php/php.ini:ro
+      - type: volume
+        source: pcit-tmp
+        target: /tmp
+    networks:
+      - backend
+      - frontend
+    working_dir: /app/pcit
+    command:
+      - up
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      # don't run daemon + agent
+      - CI_DAEMON_ENABLED=${CI_DAEMON_ENABLED:-true}
+
+  # fpm + daemon + agent
+  pcit-fpm:
+    << : *pcit
+    image: pcit/pcit:fpm
+    volumes:
+      - ./pcit/key:/app/.pcit/framework/storage/private_key:cached
+      - ./pcit/.env.${APP_ENV:-development}:/app/.pcit/.env.${APP_ENV:-development}:cached
+      - ./config/php/${LNMP_PHP_INI:-php.development.ini}:/usr/local/etc/php/php.ini:ro
+      - type: volume
+        source: pcit-tmp
+        target: /tmp
+    networks:
+      - backend
+      - frontend
+    command:
+      - up
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      # don't run daemon + agent
+      - CI_DAEMON_ENABLED=${CI_DAEMON_ENABLED:-true}
+
+  # pcit daemon
+  pcit-server:
+    << : *pcit
+    command: server
+
+  # pcit runner
+  pcit-agent:
+    << : *pcit
+    command: agent
+
+  nginx:
+    ports:
+      - "${LNMP_NGINX_HTTPS_PORT:-0.0.0.0:443}:443"
+      - "${LNMP_NGINX_HTTP_PORT:-0.0.0.0:80}:80"
+      - "${LNMP_PCIT_PORT:-0.0.0.0:10000}:10000"
+
+volumes:
+  pcit-tmp:
+    << : *default-common-label

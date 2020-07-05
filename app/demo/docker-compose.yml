@@ -1,0 +1,47 @@
+version: "3.7"
+
+#
+# 警告 compose 文件中包含中文可能会报错，所以阅读之后请删掉中文
+#
+
+#
+# docker-compose.yml 文件是为了方便本地测试构建镜像，实际请在 CI 服务器中构建镜像
+#
+# @link https://docs.docker.com/compose/compose-file/
+#
+# 避免使用 docker build -t ... 命令
+#
+#
+# $ docker-compose build
+#
+
+services:
+  test:
+    build:
+      context: .
+      dockerfile: deploy/test.Dockerfile
+      args:
+        - PHP_VERSION=${PHP_VERSION:-7.4.7}
+    image: ${DOCKER_HUB_USERNAME:-khs1994}/EXAMPLE
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NGINX_VERSION=${NGINX_VERSION:-1.15.0}
+      target: nginx
+    image: ${DOCKER_HUB_USERNAME:-khs1994}/nginx:${NGINX_VERSION:-1.15.0}-pro-alpine
+    depends_on:
+      - php
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: php
+      args:
+        - PHP_VERSION=${PHP_VERSION:-7.4.7}
+        - NODE_VERSION=${NODE_VERSION:-14.4.0}
+        - NODE_REGISTRY=https://registry.npm.taobao.org
+    image: ${DOCKER_HUB_USERNAME:-khs1994}/php:${PHP_VERSION:-7.4.7}-pro-alpine

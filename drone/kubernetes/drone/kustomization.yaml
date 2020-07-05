@@ -1,0 +1,5 @@
+bases:
+- base
+# - ../drone-runner/docker
+# - ../drone-runner/kubernetes
+namespace: ci

@@ -1,0 +1,17 @@
+/*
+!.gitignore
+!etcd
+!httpd
+!minio
+!mariadb
+!pcit
+!kong
+!mongodb
+!postgresql
+!rabbitmq
+!nginx-unit
+!registry
+!README.md
+!example
+!laravel
+!lrew.ps1

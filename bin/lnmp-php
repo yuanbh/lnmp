@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+set -e
+
+checkNetwork=`docker network ls -f driver=bridge -f name=lnmp_backend -q`
+
+test -n "$checkNetwork" && network="lnmp_backend" || network="bridge"
+
+if [ "$debug" = 'true' ];then set -x; fi
+
+if ! [ "${APP_ENV}" = "production" ];then
+  APP_ENV=development
+fi
+
+if [ $# = 0 ];then
+  COMMAND=-h
+else
+  COMMAND="$@"
+fi
+
+ScriptRoot="$( cd "$( dirname "$0"  )" && pwd  )"
+
+if ! [ -f $ScriptRoot/../log/php/cli_error.log ];then
+  touch $ScriptRoot/../log/php/cli_error.log
+fi
+
+. $ScriptRoot/.init
+
+. $ScriptRoot/../.env
+
+# -S 参数需要容器暴露端口
+
+S_ERROR(){
+  echo "lnmp-php [options] -S <addr>:<port> [-t docroot] [router]"
+  exit 1
+}
+
+if [ "$1" = '-S' ];then
+
+  if [ -z "$2" ];then S_ERROR; fi
+
+  echo "$2" | grep : > /dev/null 2>&1
+
+  if ! [ "$?" = '0' ];then S_ERROR; fi
+
+  ADDR=`echo "$2" | cut -d : -f 1`
+  PORT=`echo "$2" | cut -d : -f 2`
+
+  if [ -z "$PORT" ];then S_ERROR; fi
+
+  shift 2
+
+  exec docker run --init -i ${tty} --rm \
+    --mount type=bind,src=$PWD,target=/app,consistency=cached \
+    --mount src=lnmp_composer-cache-data,target=/tmp/cache \
+    --mount type=bind,src=$ScriptRoot/../config/php/${PHP_INI:-php.development.ini},target=/usr/local/etc/php/php.ini \
+    --mount type=bind,src=$ScriptRoot/../log/php/cli_error.log,target=/var/log/php/php_errors.log \
+    --network $network \
+    --entrypoint php \
+    -e APP_ENV=${APP_ENV} \
+    -e TZ=${TZ} \
+    -p $ADDR:$PORT:$PORT \
+    ${DOCKER_IMAGE}:${TAG} \
+    -d zend_extension=xdebug -d error_log=/var/log/php/php_errors.log -S 0.0.0.0:$PORT "$@"
+fi
+
+#
+# @link https://github.com/khs1994-docker/lnmp/issues/280
+#
+# @link https://github.com/moby/moby/issues/2838#issuecomment-29205965
+#
+
+exec docker run --init -i ${tty} --rm \
+  --mount type=bind,src=$PWD,target=/app,consistency=cached \
+  --mount src=lnmp_composer-cache-data,target=/tmp/cache \
+  --mount type=bind,src=$ScriptRoot/../config/php/${PHP_INI:-php.development.ini},target=/usr/local/etc/php/php.ini \
+  --mount type=bind,src=$ScriptRoot/../log/php/cli_error.log,target=/var/log/php/php_errors.log \
+  --network $network \
+  --entrypoint php \
+  -e TZ=${TZ} \
+  -e APP_ENV=${APP_ENV} \
+  ${DOCKER_IMAGE}:${TAG} \
+  -d zend_extension=xdebug -d error_log=/var/log/php/php_errors.log $COMMAND

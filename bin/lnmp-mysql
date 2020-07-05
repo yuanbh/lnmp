@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+#
+# https://github.com/mysql/mysql-server
+#
+# $ lnmp-mysql -uroot -pmytest -h mysql
+
+set -e
+
+checkNetwork=`docker network ls -f driver=bridge -f name=lnmp_backend -q`
+
+test -n "$checkNetwork" && network="lnmp_backend" || network="bridge"
+
+ScriptRoot="$( cd "$( dirname "$0"  )" && pwd  )"
+
+source $ScriptRoot/.init
+
+if [ "$debug" = 'true' ];then set -x; fi
+
+exec docker run -i ${tty} --rm \
+    --network $network \
+    --entrypoint mysql \
+    -e TZ=${TZ} \
+    mysql:${LNMP_MYSQL_VERSION:-8.0.20} \
+    "$@"

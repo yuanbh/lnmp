@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+#
+# https://github.com/npm/npm
+#
+
+set -e
+
+if [ "$debug" = 'true' ];then set -x; fi
+
+checkNetwork=`docker network ls -f driver=bridge -f name=lnmp_backend -q`
+
+test -n "$checkNetwork" && network="lnmp_backend" || network="bridge"
+
+ScriptRoot="$( cd "$( dirname "$0"  )" && pwd  )"
+
+source $ScriptRoot/.init
+
+docker run -i ${tty} --rm \
+  --mount type=volume,src=lnmp_npm-cache-data,target=/tmp/node/.npm \
+  --mount type=volume,src=lnmp_npm-global-data,target=/tmp/node/npm \
+  bash \
+  bash -c \
+  "set -x;chown -R ${LNMP_USER} /tmp/node/.npm; \
+   chown -R ${LNMP_USER} /tmp/node/npm; \
+  "
+
+exec docker run -i ${tty} --rm \
+    --mount type=bind,src=$PWD,target=/app,consistency=delegated \
+    --mount type=bind,src=${ScriptRoot}/../config/npm/.npmrc,target=/usr/local/etc/npmrc \
+    --mount type=volume,src=lnmp_npm-cache-data,target=/tmp/node/.npm \
+    --mount type=volume,src=lnmp_npm-global-data,target=/tmp/node/npm \
+    --env-file ${ScriptRoot}/../config/npm/.env \
+    --workdir /app \
+    --entrypoint npm \
+    --user ${LNMP_USER:-root:root} \
+    --network $network \
+    ${LNMP_NODE_IMAGE:-node:alpine} \
+    "$@"

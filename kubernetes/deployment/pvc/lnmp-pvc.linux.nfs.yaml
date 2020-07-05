@@ -1,0 +1,90 @@
+# 适用于 Linux NFS 的 PVC 定义文件
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lnmp-mysql-data
+  labels:
+    app: lnmp
+    tier: mysql
+    env: development
+spec:
+  accessModes: # 申请的访问模式必须与 pv 相同
+    - ReadWriteMany
+  # volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 20Gi
+  selector: # 根据标签选择器把 pvc 与 pv 进行绑定, 动态创建 pv 不适合配置选择器
+    matchLabels:
+      app: lnmp
+      tier: mysql
+      env: development
+    # matchExpressions:
+      # - {key: environment, operator: In, values: [dev]}
+  storageClassName: slow
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lnmp-redis-data
+  labels:
+    app: lnmp
+    tier: redis
+    env: development
+spec:
+  accessModes:
+    - ReadWriteMany
+  selector:
+    matchLabels:
+      app: lnmp
+      tier: redis
+      env: development
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: slow
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lnmp-app
+  labels:
+    app: lnmp
+    tier: code-data
+    env: development
+spec:
+  accessModes:
+    - ReadWriteMany
+  selector:
+    matchLabels:
+      app: lnmp
+      tier: code-data
+      env: development
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: slow
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lnmp-log
+  labels:
+    app: lnmp
+    tier: log
+    env: development
+spec:
+  accessModes:
+    - ReadWriteMany
+  selector:
+    matchLabels:
+      app: lnmp
+      tier: log
+      env: development
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: slow

@@ -1,0 +1,49 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: demo-pod
+  labels:
+    app: demo
+spec:
+  restartPolicy: Never
+  hostAliases:
+  - ip: "127.0.0.1"
+    hostnames:
+    - "foo.local"
+    - "bar.local"
+  # 初始化容器
+  initContainers:
+  - name: "init"
+    image: "busybox"
+    command: ["ls"]
+  # pod 可包含多个 container
+  # 共享网络（ip addr 结果一样），故两个容器的端口不能冲突
+  containers:
+  - name: "demo-pod"
+    image: "nginx:alpine"
+    # command:
+    # args:
+  - name: "demo-pod2"
+    image: "alpine:3.11"
+    args:
+      - sleep 3600
+    command:
+      - sh
+      - -c
+    securityContext:
+      # $ man 7 capabilities
+      capabilities:
+        drop:
+        - NET_ADMIN
+        - NET_RAW
+        - SYS_CHROOT
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "128Mi"
+      limits:
+        cpu: "500M"
+        memory: "200Mi"
+  volumes:
+  - name: test
+    emptyDir: {}

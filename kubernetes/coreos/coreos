@@ -1,0 +1,174 @@
+#!/bin/bash
+
+if ! [ -f .env ];then
+  cp .env.example .env
+fi
+
+source ../.env.example
+
+if [ -f ../.env ];then
+  source ../.env
+fi
+
+source ./.env.example
+source ./.env
+
+set -e
+
+if ! [ -d ignition ];then echo "please exec this shell scipt in coreos folder"; exit 1; fi
+
+print_help_info(){
+    echo "
+CoreOS CLI
+
+KUBERNETES: $KUBERNETES_VERSION
+FCOS: $FCOS_VERSION
+
+Usages:
+
+init              Download CoreOS ISO files
+server            Up CoreOS install local server
+cert              Generate Self-Signed Certificates
+
+add-node          Create node ignition yaml file [N] [master|node]
+
+new-vm            Create new VirtualBox vm [N]
+
+cleanup           Cleanup Cache
+
+mount-iso         Mount ISO [N]
+remove-iso        Remove ISO [N]
+"
+}
+
+# write ssh pub
+
+ssh_pub=$( cat ~/.ssh/id_rsa.pub | cut -d " " -f 2 )
+
+sed -i "s!^SSH_PUB=.*!SSH_PUB=$ssh_pub!g" .env
+
+# cp kube config
+
+if ! [ -d $HOME/.kube ];then mkdir -p $HOME/.kube ; fi
+
+# cp cert/kubectl.kubeconfig ~/.kube/config
+
+if [ -n "$debug" -o -n "$DEBUG" ];then set -x;fi
+
+_init(){
+
+# Download coreos iso files
+cd current
+
+items="fedora-coreos-${FCOS_VERSION}-metal.x86_64.raw.xz \
+      fedora-coreos-${FCOS_VERSION}-live.x86_64.iso \
+      fedora-coreos-${FCOS_VERSION}-metal.x86_64.raw.xz.sig "
+
+for item in $items;do
+
+if ! [ -f $item ];then
+  echo "==> download $item"
+  echo ""
+  echo ""
+  curl -O \
+    https://builds.coreos.fedoraproject.org/prod/streams/testing/builds/${FCOS_VERSION}/x86_64/$item
+fi
+
+done
+
+cd .. > /dev/null
+
+}
+
+if [ "$1" = 'init' ];then _init ; exit; fi
+
+case "$1" in
+
+  server )
+  if ! [ -f cert/server-cert.pem ];then
+    cd ..
+    docker-compose up cfssl
+    cd -
+  fi
+
+  cd ..
+  docker-compose up server
+
+  ;;
+
+  cert )
+    cd ..
+    docker-compose up cfssl
+
+  ;;
+
+  add-node )
+    if [ -z "$2" ];then echo "==> Please Input >3 number"; exit 1; fi
+
+    if [ "$2" -le 3 ];then
+      echo "==> Please Input >3 number"
+      exit 1
+    fi
+
+    if [ -n "$3" ];then TYPE=$3;fi
+
+    cp ignition/example/ignition-n.${TYPE:-master}.template.yaml ignition/ignition-$2.yaml
+    sed -i "s#{{n}}#$2#g" ignition/ignition-$2.yaml
+  ;;
+
+  new-vm )
+      if [ -z $2 ];then
+
+        echo -e "==> Please input node num\n\n$ ./coreos create-node N" ; exit
+
+      fi
+
+      # $ VBoxManage list ostypes
+
+      VBoxManage createvm --name "coreos"$2 --ostype 'Linux26_64' --register
+
+      VBoxManage modifyvm "coreos"$2 \
+      --memory 3072 \
+      --acpi on \
+      --boot1 dvd \
+      --nic2 bridged \
+      --nic1 hostonly \
+      --bridgeadapter2 $(test `uname -s` = 'Linux' && (ip route list | grep default | awk '{print $5}') || true ) \
+      --hostonlyadapter1 vboxnet1 \
+      --firmware efi
+
+      VBoxManage createmedium --filename "$HOME/VirtualBox VMs/coreos$2/coreos$2.vdi" --size 100000
+
+      VBoxManage storagectl "coreos"$2 --name "IDE Controller" --add ide --controller PIIX4
+
+      VBoxManage storageattach "coreos"$2 --storagectl "IDE Controller" \
+          --nonrotational on --port 0 --device 0 --type hdd --medium "$HOME/VirtualBox VMs/coreos$2/coreos$2.vdi"
+
+      VBoxManage storageattach "coreos"$2 --storagectl "IDE Controller" \
+          --port 0 --device 1 --type dvddrive --medium current/fedora-coreos-${FCOS_VERSION}-live.x86_64.iso
+
+      echo "==> Please checkout coreos$2 config, then start it"
+  ;;
+
+  cleanup )
+    docker image rm ccr.ccs.tencentyun.com/khs1994/kubernetes:v${KUBERNETES_VERSION}
+  ;;
+
+  umount-iso )
+      VBoxManage storageattach "coreos"$2 --storagectl "IDE Controller" \
+          --port 0 --device 1 --type dvddrive --medium none
+
+  ;;
+
+  mount-iso )
+      VBoxManage storageattach "coreos"$2 --storagectl "IDE Controller" \
+          --port 0 --device 1 --type dvddrive --medium current/fedora-coreos-${FCOS_VERSION}-live.x86_64.iso
+
+  ;;
+
+  * )
+    print_help_info
+
+  ;;
+
+esac

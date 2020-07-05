@@ -1,0 +1,29 @@
+{
+  "name": "vim",
+  "description": "Vi IMproved - enhanced vi editor",
+  "version": "8.2.0671",
+  "pre-version": "8.2.0671",
+  "homepage": "https://www.vim.org/",
+  "bug": "https://github.com/vim/vim-win32-installer/issues",
+  "github": "vim/vim-win32-installer",
+  "releases": "https://github.com/vim/vim-win32-installer/releases",
+  "url": "https://github.com/vim/vim-win32-installer/releases/download/v${VERSION}/gvim_${VERSION}_x86.exe",
+  "command": "vim",
+  "scripts": {
+    "platform-reqs": [
+      "if(!$IsWindows){echo $False}"
+    ],
+    "install": [
+      "Start-Process -FilePath $filename"
+    ],
+    "uninstall": [
+      "$VERSION_X=(vim --version).split(' ')[4].split('.')[0]",
+      "$VERSION_Y=(vim --version).split(' ')[4].split('.')[1]",
+      "start-process -wait -path ${env:ProgramFiles(x86)}\\Vim\\vim${VERSION_X}${VERSION_Y}\\uninstall-gui.exe"
+    ],
+    "test": "printInfo $(vim --version)[0] install success",
+    "version": [
+      "echo ${VERSION}"
+    ]
+  }
+}

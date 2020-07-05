@@ -1,0 +1,7 @@
+# https://github.com/moby/buildkit/blob/master/docs/buildkitd.toml.md
+
+debug = true
+
+[registry."docker.io"]
+  mirrors = ["hub-mirror.c.163.com","registry-1.docker.io"]
+  http = false

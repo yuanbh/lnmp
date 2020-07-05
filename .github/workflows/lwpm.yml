@@ -1,0 +1,94 @@
+name: LWPM
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  skip-ci:
+    runs-on: ubuntu-latest
+    if: |
+      (! (contains( github.event.head_commit.message, '[skip ci]')
+      || contains( github.event.head_commit.message, '[skip action]')
+      || contains( github.event.head_commit.message, '[skip actions]')
+      || contains( github.event.head_commit.message, '[ci skip]')
+      || contains( github.event.head_commit.message, '[actions skip]')
+      || contains( github.event.head_commit.message, '[action skip]')))
+    steps:
+      - run: echo "build continue !"
+  CI:
+    runs-on: windows-latest
+    needs: skip-ci
+    timeout-minutes: 10
+    env:
+      LNMP_CN_ENV: false
+    steps:
+    - uses: actions/checkout@master
+      with:
+        fetch-depth: 2
+    - name: Set ENV
+      run: |
+        echo ::add-path::$(pwd)\windows
+        echo ::add-path::C:\ProgramData\ComposerSetup\bin
+        echo ::set-env name=LNMP_PATH::$(pwd)
+    - name: init
+      shell: pwsh
+      run: echo "extension=openssl" C:\tools\php\php.ini > $null
+    - shell: powershell
+      run: php -i | select-string .ini
+    - run: php -m
+    - shell: powershell
+      run: cat C:\tools\php\php.ini | select-string extension
+    - name: install composer
+      shell: powershell
+      run: lnmp-windows-pm.ps1 install composer
+    - name: lwpm-init
+      shell: powershell
+      run: lnmp-windows-pm.ps1 init test
+    - name: lwpm-add
+      shell: pwsh
+      run: lnmp-windows-pm.ps1 add openjdk
+    - name: lwpm-install
+      shell: pwsh
+      run: |
+        lnmp-windows-pm.ps1 install openjdk
+        echo $env:PATH
+    - shell: pwsh
+      run: |
+        ls -r vendor
+    - shell: pwsh
+      name: Download docker hub docker image rootfs
+      run: |
+        . ./windows/sdk/dockerhub/rootfs.ps1
+        rootfs hello-world
+      # env:
+      #   DOCKER_USERNAME: ${{secrets.DOCKER_USERNAME}}
+      #   DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+    - shell: pwsh
+      name: Download aliyun docker image rootfs
+      run: |
+        . ./windows/sdk/dockerhub/rootfs.ps1
+        rootfs khs1994/hello-world latest '' '' '' 0 registry.us-west-1.aliyuncs.com
+      # env:
+      #   DOCKER_USERNAME: ${{secrets.DOCKER_ALIYUN_USERNAME}}
+      #   DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+    - shell: pwsh
+      name: Download tencent cloud docker image rootfs
+      run: |
+        . ./windows/sdk/dockerhub/rootfs.ps1
+        rootfs khs1994/hello-world latest '' '' '' 0 uswccr.ccs.tencentyun.com
+      # env:
+      #   DOCKER_USERNAME: ${{secrets.DOCKER_TENCENT_CLOUD_USERNAME}}
+      #   DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+    - shell: pwsh
+      name: Download mirror.gcr.io docker image rootfs
+      run: |
+        . ./windows/sdk/dockerhub/rootfs.ps1
+        rootfs hello-world latest '' '' '' 0 mirror.gcr.io
+      # env:
+      #   DOCKER_USERNAME: ${{secrets.DOCKER_USERNAME}}
+      #   DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+      continue-on-error: true
+    - name: List docker image rootfs
+      run : |
+        ls ~/.khs1994-docker-lnmp/dockerhub

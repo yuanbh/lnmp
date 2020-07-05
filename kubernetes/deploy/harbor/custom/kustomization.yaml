@@ -1,0 +1,14 @@
+bases:
+- ../overlays/development
+# fix me ingress 用的证书
+- ../../../secrets/t.khs1994.com
+patchesStrategicMerge:
+- secret/harbor-core/patches.yaml
+- secret/harbor-notary-server/patches.yaml
+- secret/harbor-clair/patches.yaml
+- trivy.yaml
+resources:
+- namespace.yaml
+- ingress.yaml
+- pv.yaml
+namespace: harbor
